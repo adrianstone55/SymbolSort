@@ -3,15 +3,9 @@
 //  extracted either from the PDB or from a dump using DumpBin /headers.  More
 //  documentation is available at http://gameangst.com/?p=320
 //
-//  This code was authored and released into the public domain by
-//  Adrian Stone (stone@gameangst.com).
-//
-//  THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//  FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. IN NO EVENT
-//  SHALL ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE FOR ANY DAMAGES OR OTHER 
-//  LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-//  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//  This code was originally authored and released by Adrian Stone
+//  (stone@gameangst.com).  It is available for use under the
+//  Apache 2.0 license.  See LICENCE file for details.
 //-----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
