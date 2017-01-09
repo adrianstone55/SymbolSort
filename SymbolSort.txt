@@ -114,6 +114,42 @@ Options:
   -searchpath path
       Specify the symbol search path when loading an exe
 
+  -path_replace regex_match regex_replace
+      Specify a regular expression search/replace for symbol paths.
+      Multiple path_replace sequences can be specified for a single
+      run.  The match term is escaped but the replace term is not.
+      For example: -path_replace d:\\SDK_v1 c:\SDK -path_replace
+      d:\\SDK_v2 c:\SDK
+
+  -complete
+      Include a complete listing of all symbols sorted by address.
+
+Options specific to Exe and PDB inputs:
+  -include_public_symbols
+      Include 'public symbols' from PDB inputs.  Many symbols in the
+      PDB are listed redundantly as 'public symbols.'  These symbols
+      provide a slightly different view of the PDB as they are named
+      more descriptively and usually include padding for alignment
+      in their sizes.
+
+  -keep_redundant_symbols
+      Normally symbols are processed to remove redundancies.  Partially
+      overlapped symbols are adjusted so that their sizes aren't over
+      reported and completely overlapped symbols are discarded
+      completely.  This option preserves all symbols and their reported
+      sizes
+
+  -include_sections_as_symbols
+      Attempt to extract entire sections and treat them as individual
+      symbols.  This can be useful when mapping sections of an
+      executable that don't otherwise contain symbols (such as .pdata).
+
+  -include_unmapped_addresses
+      Insert fake symbols representing any unmapped addresses in the
+      PDB.  This option can highlight sections of the executable that
+      aren't directly attributable to symbols.  In the complete view
+      this will also highlight space lost due to alignment padding.
+
 
 SymbolSort supports several types of input files:
 
@@ -136,16 +172,16 @@ produce a multi-gigabyte file.
 SymbolSort supports reading debug symbol information from .exe files and .pdb
 files.  The .exe file will only be used to find the location of its matching
 .pdb file, and then the symbols will be extracted from the PDB.  SymbolSort
-uses msdia90.dll to extract data from the PDB file.  Msdia90.dll is included
+uses msdia100.dll to extract data from the PDB file.  Msdia100.dll is included
 with the Microsoft compiler toolchain.  In order to use it you will probably
 have to register the dll.
 
-  regsvr32 "C:\Program Files\Common Files\Microsoft Shared\VC\msdia90.dll"
+  regsvr32 "C:\Program Files\Common Files\Microsoft Shared\VC\msdia100.dll"
 
-It is important that you register the 64-bit version of msdia90.dll on 64-bit
+It is important that you register the 64-bit version of msdia100.dll on 64-bit
 Windows and the 32-bit version on 32-bit Windows.  If you don't find
-msdia90.dll in the path listed above, try looking for it in the Visual Studio
-install directory under "\Microsoft Visual Studio 9.0\DIA SDK\bin\"
+msdia100.dll in the path listed above, try looking for it in the Visual Studio
+install directory under "\Microsoft Visual Studio 10.0\DIA SDK\bin\"
 
 - NM dump -
 
@@ -172,11 +208,18 @@ Reference" and then browsing for the msdia90 dll.
 
 REVISION HISTORY:
 
-1.1    Added support for computing differences between multiple input sources
-       Added support for nm output for PS3 / unix platforms
-       Changed command line parameters.  See usage for details.
-       Added section / type information to output.
-1.0    First release!
+1.2    + Upgraded to Visual Studio 2010 / msdia100.dll
+       + Added -path_replace option to convert paths stored in PDBs.
+       + Added -complete option to dump a full list of all symbols sorted by 
+         address.
+       + Added several options for controlling what symbols are included in PDB
+         dumps since PDBs often list the same address redundantly under
+         different labels.
+1.1    + Added support for computing differences between multiple input sources
+       + Added support for nm output for PS3 / unix platforms.
+       + Changed command line parameters.  See usage for details.
+       + Added section / type information to output.
+1.0    + First release!
 
 
 
