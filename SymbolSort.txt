@@ -210,6 +210,14 @@ fixed by running this command from an administrator command prompt:
 
     regsvr32 "c:\Program Files (x86)\Microsoft Visual Studio 14.0\DIA SDK\bin\amd64\msdia140.dll"
 
+If you are targetting .NET Framework version >= 4.0, you may receive the following error
+on attempting to build: 
+
+    Interop type 'DiaSourceClass' cannot be embedded. Use the applicable interface instead.
+    
+To fix this either target an earlier .NET Framework or change the "Embed Interop Types" property
+on the Dia2Lib reference to False.
+
 
 REVISION HISTORY:
 
