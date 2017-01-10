@@ -166,16 +166,17 @@ produce a multi-gigabyte file.
 SymbolSort supports reading debug symbol information from .exe files and .pdb
 files.  The .exe file will only be used to find the location of its matching
 .pdb file, and then the symbols will be extracted from the PDB.  SymbolSort
-uses msdia100.dll to extract data from the PDB file.  Msdia100.dll is included
+uses msdia140.dll to extract data from the PDB file.  Msdia140.dll is included
 with the Microsoft compiler toolchain.  In order to use it you will probably
-have to register the dll.
+have to register the dll by running this command from an elevated command
+prompt:
 
-  regsvr32 "C:\Program Files\Common Files\Microsoft Shared\VC\msdia100.dll"
+  regsvr32 "c:\Program Files (x86)\Microsoft Visual Studio 14.0\DIA SDK\bin\amd64\msdia140.dll"
 
-It is important that you register the 64-bit version of msdia100.dll on 64-bit
-Windows and the 32-bit version on 32-bit Windows.  If you don't find
-msdia100.dll in the path listed above, try looking for it in the Visual Studio
-install directory under "\Microsoft Visual Studio 10.0\DIA SDK\bin\"
+It is important that you register the 64-bit version of msdia140.dll on 64-bit
+Windows and the 32-bit version on 32-bit Windows. Note that SymbolSort works
+with multiple versions of msdia*.dll, from at least msdia90.dll to
+msdia140.dll.
 
 - NM dump -
 
@@ -192,12 +193,22 @@ contains more information.  The recommended nm commands lines are:
 BUILDING:
 
 The source for SymbolSort is distributed as a single file, SymbolSort.cs.  It
-can be built as a simple C# command line utility.  In order to get the msdia90
-interop to work you must add msdia90.dll as a reference to the C# project.
+can be built as a simple C# command line utility.  In order to get the msdia140
+interop to work you must add msdia140.dll as a reference to the C# project.
 That is done either by dragging and dropping the dll onto the references folder
 in the C# project or by right clicking the references folder, selecting "Add
-Reference" and then browsing for the msdia90 dll.
+Reference" and then browsing for the msdia140 dll.
 
+You may get this error message:
+
+    A reference to 'C:\Program Files (x86)\Microsoft Visual Studio 14.0\DIA
+    SDK\bin\amd64\msdia140.dll' could not be added. Please make sure that the
+    file is accessible, and that it is a valid assembly or COM component.
+
+This just means that msdia140.dll has not been registered. This is easily
+fixed by running this command from an administrator command prompt:
+
+    regsvr32 "c:\Program Files (x86)\Microsoft Visual Studio 14.0\DIA SDK\bin\amd64\msdia140.dll"
 
 
 REVISION HISTORY:
