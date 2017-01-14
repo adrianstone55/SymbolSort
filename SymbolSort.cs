@@ -8,19 +8,16 @@
 //  Apache 2.0 license.  See LICENCE file for details.
 //-----------------------------------------------------------------------------
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
-using System.Text.RegularExpressions;
-using System.Globalization;
-using System.Diagnostics;
-
-using Dia2Lib;
-using System.Runtime.InteropServices;
-
 using System.Collections;
-using System.Reflection;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.RegularExpressions;
+using Dia2Lib;
 
 // Most of the interop with msdia90.dll can be generated automatically
 // by added the DLL as a reference in the C# application.  Below are
@@ -59,13 +56,13 @@ namespace Dia2Lib
     [InterfaceType(1)]
     public interface IDiaEnumSectionContribs
     {
-        System.Collections.IEnumerator GetEnumerator();
+        IEnumerator GetEnumerator();
         int count { get; }
-        void Clone(out IDiaEnumSectionContribs ppenum);
         IDiaSectionContrib Item(uint index);
         void Next(uint celt, out IDiaSectionContrib rgelt, out uint pceltFetched);
-        void Reset();
         void Skip(uint celt);
+        void Reset();
+        void Clone(out IDiaEnumSectionContribs ppenum);
     }
 
     enum NameSearchOptions
@@ -82,20 +79,6 @@ namespace Dia2Lib
         nsRegularExpression = (nsfRegularExpression | nsfCaseSensitive),
         nsCaseInRegularExpression = (nsfRegularExpression | nsfCaseInsensitive)
     } ;
-
-    enum DataKind
-    {
-        DataIsUnknown,
-        DataIsLocal,
-        DataIsStaticLocal,
-        DataIsParam,
-        DataIsObjectPtr,
-        DataIsFileStatic,
-        DataIsGlobal,
-        DataIsMember,
-        DataIsStaticMember,
-        DataIsConstant
-    }
 
     enum LocationType
     { 
@@ -659,16 +642,8 @@ namespace SymbolSort
                 tableEnum.Next(numFetched, ref table, ref numFetched);
                 if (table == null || numFetched < 1)
                     break;
-
-                try
-                {
-                    IDiaEnumSectionContribs enumSectionContribs = (IDiaEnumSectionContribs)table;
-                    if (enumSectionContribs != null)
-                        return enumSectionContribs;
-                }
-                catch (Exception)
-                {
-                }
+                if (table is IDiaEnumSectionContribs)
+                    return table as IDiaEnumSectionContribs;
             }
 
             return null;
