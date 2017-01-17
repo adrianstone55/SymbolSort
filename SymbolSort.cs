@@ -1155,7 +1155,7 @@ namespace SymbolSort
 
         private static void ReadSymbolsFromPDB(List<Symbol> symbols, string filename, string searchPath, Options options)
         {
-            DiaSourceClass diaSource = new DiaSourceClass();
+            DiaSource diaSource = new DiaSource();
 
             if (Path.GetExtension(filename).ToLower() == ".pdb")
             {
