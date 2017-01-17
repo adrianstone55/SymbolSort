@@ -1011,7 +1011,12 @@ namespace SymbolSort
         {
             if (symbols.Count > 0)
             {
-                symbols.Sort(delegate(Symbol x, Symbol y) { return x.rva_start - y.rva_start; });
+                symbols.Sort(delegate(Symbol x, Symbol y) {
+                    if (x.rva_start != y.rva_start)
+                        return x.rva_start - y.rva_start;
+
+                    return x.name.CompareTo(y.name);
+                });
                 int highWaterMark = symbols[0].rva_start;
                 for (int i = 0, count = symbols.Count; i < count; ++i)
                 {
@@ -1413,11 +1418,13 @@ namespace SymbolSort
                 mergedSymbols.Sort(
                     delegate(MergedSymbol s0, MergedSymbol s1)
                     {
-                        if (s0.total_count == s1.total_count)
-                        {
+                        if (s0.total_count != s1.total_count)
+                            return s1.total_count - s0.total_count;
+
+                        if (s0.total_size != s1.total_size)
                             return s1.total_size - s0.total_size;
-                        }
-                        return s1.total_count - s0.total_count;
+
+                        return s0.id.CompareTo(s1.id);
                     } );
 
                 if (showDifferences)
@@ -1450,7 +1457,13 @@ namespace SymbolSort
                 mergedSymbols.Sort(
                     delegate(MergedSymbol s0, MergedSymbol s1)
                     {
-                        return s1.total_size - s0.total_size;
+                        if (s0.total_size != s1.total_size)
+                            return s1.total_size - s0.total_size;
+
+                        if (s0.total_count != s1.total_count)
+                            return s1.total_count - s0.total_count;
+
+                        return s0.id.CompareTo(s1.id);
                     } );
 
                 if (showDifferences)
@@ -1828,7 +1841,10 @@ namespace SymbolSort
                     symbols.Sort(
                         delegate(Symbol s0, Symbol s1)
                         {
-                            return s1.size - s0.size;
+                            if (s1.size != s0.size)
+                                return s1.size - s0.size;
+
+                            return s0.name.CompareTo(s1.name);
                         });
                     writer.WriteLine("Sorted by Size");
                     WriteSymbolList(writer, symbols, maxCount);
@@ -1917,7 +1933,10 @@ namespace SymbolSort
                         if (x.rva_end != y.rva_end)
                             return y.rva_end - x.rva_end;
 
-                        return y.size - x.size;
+                        if (y.size != x.size)
+                            return y.size - x.size;
+
+                        return x.name.CompareTo(y.name);
                     });
                 writer.WriteLine("{0,12} {1,12} {2,12} {3,12}  {4,-120}  {5}",
                 "Addr. Start", "Addr. End", "Unique Size", "Section/Type", "Name", "Source");
