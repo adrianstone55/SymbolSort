@@ -111,7 +111,7 @@ namespace Dia2Lib
     {
         [FieldOffset(0)]
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
-        public char[] ShortName;
+        public byte[] ShortName;
         [FieldOffset(8)]
         public UInt32 VirtualSize;
         [FieldOffset(12)]
@@ -131,7 +131,7 @@ namespace Dia2Lib
         [FieldOffset(36)]
         public DataSectionFlags Characteristics;
 
-        public string Name { get { return new string(ShortName); } }
+        public string Name => Encoding.UTF8.GetString(ShortName).TrimEnd('\0');
     }
 
     // This class is a specialization of IDiaEnumDebugStreamData.
