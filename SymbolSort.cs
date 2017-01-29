@@ -378,10 +378,16 @@ namespace SymbolSort
         {
             symbol = null;
 
-            string[] tokens = line.Split("|".ToCharArray(), 7);
+            // nm sysv output has the following 7 fields separated by '|': Name, Value, Class, Type, Size, Line, Section
+            // Name could contain | when operator| or operator|| are overloaded and Section could contain | chars in a path
+            line = line.Replace("operator|(", ">>operatorBitwiseOr<<");
+            line = line.Replace("operator||(", ">>operatorLogicalOr<<");
 
+            string[] tokens = line.Split("|".ToCharArray(), 7, StringSplitOptions.None);
             if (tokens.Length < 7)
                 return;
+            tokens[0] = tokens[0].Replace(">>operatorBitwiseOr<<", "operator|(");
+            tokens[0] = tokens[0].Replace(">>operatorLogicalOr<<", "operator||(");
 
             int rva = 0;
             int size = 0;
@@ -479,6 +485,7 @@ namespace SymbolSort
                     {
                         s.source_filename = s.source_filename.Substring(0, lineNumberLoc);
                     }
+
                     if (Path.IsPathRooted(s.source_filename))
                     {
                         string canonicalPath = PathCanonicalize(s.source_filename);
