@@ -561,7 +561,7 @@ namespace SymbolSort
 
         private static Regex ReadSymbolsFromCOMDAT_regexName = new Regex(@"\n[ \t]*([^ \t]+)[ \t]+name", RegexOptions.Compiled);
         private static Regex ReadSymbolsFromCOMDAT_regexSize = new Regex(@"\n[ \t]*([A-Za-z0-9]+)[ \t]+size of raw data", RegexOptions.Compiled);
-        private static Regex ReadSymbolsFromCOMDAT_regexCOMDAT = new Regex(@"\n[ \t]*COMDAT; sym= \""([^\n\""]+)", RegexOptions.Compiled);
+        private static Regex ReadSymbolsFromCOMDAT_regexCOMDAT = new Regex(@"\n[ \t]*COMDAT; sym= \""([^\n\""]+)\"" \(([^\n()]+)\)", RegexOptions.Compiled);
         private static void ReadSymbolsFromCOMDAT(List<Symbol> symbols, string inFilename)
         {
             Regex regexName = ReadSymbolsFromCOMDAT_regexName;
@@ -613,6 +613,7 @@ namespace SymbolSort
 
                         m = regexCOMDAT.Match(record);
                         symbol.name = m.Groups[1].Value;
+                        symbol.raw_name = m.Groups[2].Value;
                         if (symbol.name != "")
                         {
                             symbol.rva_start = 0;
