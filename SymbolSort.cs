@@ -988,8 +988,11 @@ namespace SymbolSort
                 string rawName;
                 IDiaSymbolUndecoratedNameExFlags flags = IDiaSymbolUndecoratedNameExFlags.UNDNAME_32_BIT_DECODE | IDiaSymbolUndecoratedNameExFlags.UNDNAME_TYPE_ONLY;
                 diaSymbol.get_undecoratedNameEx((uint)flags, out rawName);
-                if (rawName != "")
-                    symbol.raw_name = rawName;
+                if (rawName != null) {
+                    //ignore trashy names like " ?? :: ?? ::Z::_NPEBDI_N * __ptr64 volatile "
+                    if (!rawName.Contains(' '))
+                        symbol.raw_name = rawName;
+                }
 
                 switch (type)
                 {
