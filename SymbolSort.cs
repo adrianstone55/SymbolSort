@@ -1914,6 +1914,35 @@ namespace SymbolSort
                     });
             }
 
+            List<InputFile> infoPdb = opts.inputFiles.FindAll(f => f.info && f.type == InputType.pdb);
+            if (infoPdb.Count() > 0)
+            {
+                var infoSymbols = new List<Symbol>();
+                foreach (InputFile f in infoPdb)
+                    LoadSymbols(f, infoSymbols, opts.searchPath, opts.flags);
+                var infoDict = new Dictionary<string, Symbol>();
+                foreach (Symbol s in infoSymbols)
+                    if (s.raw_name != null && !infoDict.ContainsKey(s.raw_name))
+                        infoDict.Add(s.raw_name, s);
+
+                Console.WriteLine("Connecting symbols to PDB info...");
+                int connectedCnt = 0, allCnt = symbols.Count;
+                foreach (Symbol s in symbols)
+                {
+                    Symbol info;
+                    if (infoDict.TryGetValue(s.raw_name, out info))
+                    {
+                        connectedCnt++;
+                        s.source_filename = info.source_filename;
+                        //TODO: take any other parameters from PDB?
+                    }
+                    else
+                        s.name = "";    //to be removed
+                }
+                symbols.RemoveAll(s => s.name == "");
+                Console.WriteLine("Connected {0}% symbols ({1}/{2})", (uint)(100.0 * connectedCnt / allCnt), connectedCnt, allCnt);
+            }
+
             Console.WriteLine("Processing raw symbols...");
             {
                 long totalCount = 0;
