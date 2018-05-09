@@ -181,6 +181,7 @@ namespace SymbolSort
         public int rva_end;
         public string name;
         public string short_name;
+        public string raw_name;     //decorated symbol name
         public string source_filename;
         public string section;
         public SymbolFlags flags = 0;
