@@ -244,10 +244,12 @@ namespace SymbolSort
     {
         public string       filename;
         public InputType    type;
+        public bool         info;  //parse file but exclude it from stats
         public InputFile(string filename, InputType type)
         {
             this.filename = filename;
             this.type = type;
+            this.info = false;
         }
     }
 
@@ -1662,6 +1664,12 @@ namespace SymbolSort
                     {
                         opts.inputFiles.Add(new InputFile(args[++curArg], InputType.nm_bsd));
                     }
+                    else if (curArgStr == "-info")
+                    {
+                        var infile = new InputFile(args[++curArg], InputType.pdb);
+                        infile.info = true;
+                        opts.inputFiles.Add(infile);
+                    }
                     else if (curArgStr == "-out")
                     {
                         opts.outFilename = args[++curArg];
@@ -1862,6 +1870,7 @@ namespace SymbolSort
             List<Symbol> symbols = new List<Symbol>();
             foreach (InputFile inputFile in opts.inputFiles)
             {
+                if (inputFile.info) continue;
                 LoadSymbols(inputFile, symbols, opts.searchPath, opts.flags);
                 Console.WriteLine();
             }
