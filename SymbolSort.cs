@@ -983,6 +983,14 @@ namespace SymbolSort
                 symbol.short_name = diaSymbol.name == null ? "" : diaSymbol.name;
                 symbol.name = diaSymbol.undecoratedName == null ? symbol.short_name : diaSymbol.undecoratedName;
                 symbol.flags = additionalFlags;
+
+                //extract raw symbol name (see https://stackoverflow.com/a/19637731/556899)
+                string rawName;
+                IDiaSymbolUndecoratedNameExFlags flags = IDiaSymbolUndecoratedNameExFlags.UNDNAME_32_BIT_DECODE | IDiaSymbolUndecoratedNameExFlags.UNDNAME_TYPE_ONLY;
+                diaSymbol.get_undecoratedNameEx((uint)flags, out rawName);
+                if (rawName != "")
+                    symbol.raw_name = rawName;
+
                 switch (type)
                 {
                     case SymTagEnum.SymTagData:
