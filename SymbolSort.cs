@@ -96,6 +96,33 @@ namespace Dia2Lib
         LocTypeMax
     }
 
+    // See https://msdn.microsoft.com/en-us/library/kszfk0fs.aspx
+    // for documentation of IDiaSymbol::get_undecoratedNameEx flags
+    [Flags]
+    enum IDiaSymbolUndecoratedNameExFlags : uint
+    {
+        UNDNAME_COMPLETE                    = 0x0000,
+        UNDNAME_NO_LEADING_UNDERSCORES      = 0x0001,
+        UNDNAME_NO_MS_KEYWORDS              = 0x0002,
+        UNDNAME_NO_FUNCTION_RETURNS         = 0x0004,
+        UNDNAME_NO_ALLOCATION_MODEL         = 0x0008,
+        UNDNAME_NO_ALLOCATION_LANGUAGE      = 0x0010,
+        UNDNAME_RESERVED1                   = 0x0020,
+        UNDNAME_RESERVED2                   = 0x0040,
+        UNDNAME_NO_THISTYPE                 = 0x0060,
+        UNDNAME_NO_ACCESS_SPECIFIERS        = 0x0080,
+        UNDNAME_NO_THROW_SIGNATURES         = 0x0100,
+        UNDNAME_NO_MEMBER_TYPE              = 0x0200,
+        UNDNAME_NO_RETURN_UDT_MODEL         = 0x0400,
+        UNDNAME_32_BIT_DECODE               = 0x0800,
+        UNDNAME_NAME_ONLY                   = 0x1000,
+        UNDNAME_TYPE_ONLY                   = 0x2000,
+        UNDNAME_HAVE_PARAMETERS             = 0x4000,
+        UNDNAME_NO_ECSU                     = 0x8000,
+        UNDNAME_NO_IDENT_CHAR_CHECK         = 0x10000,
+        UNDNAME_NO_PTR64                    = 0x20000,
+    }
+
     // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms680341(v=vs.85).aspx for
     // more flag options and descriptions
     [Flags]
