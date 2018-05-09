@@ -197,8 +197,9 @@ namespace SymbolSort
         PublicSymbol    = 0x008,
         Section         = 0x010,
         Unmapped        = 0x020,
-        Weak            = 0x040
-     };
+        Weak            = 0x040,
+        SourceApprox    = 0x080,    //source filename of this function is not precise
+    };
 
     class Symbol
     {
@@ -1032,6 +1033,7 @@ namespace SymbolSort
                             {
                                 IDiaSectionContrib sectionContrib = FindSectionContribForRVA(symbol.rva_start, sectionContribs);
                                 symbol.source_filename = sectionContrib == null ? "" : compilandFileMap[sectionContrib.compilandId];
+                                symbol.flags |= SymbolFlags.SourceApprox;
                             }
                             symbol.section = "code";
                             symbol.flags |= SymbolFlags.Function;
@@ -1922,8 +1924,13 @@ namespace SymbolSort
                     LoadSymbols(f, infoSymbols, opts.searchPath, opts.flags);
                 var infoDict = new Dictionary<string, Symbol>();
                 foreach (Symbol s in infoSymbols)
-                    if (s.raw_name != null && !infoDict.ContainsKey(s.raw_name))
-                        infoDict.Add(s.raw_name, s);
+                    if (s.raw_name != null)
+                        if (!infoDict.ContainsKey(s.raw_name))
+                        {
+                            infoDict.Add(s.raw_name, s);
+                            if ((s.flags & SymbolFlags.SourceApprox) != 0)
+                                s.source_filename = "[unclear_source]";
+                        }
 
                 Console.WriteLine("Connecting symbols to PDB info...");
                 int connectedCnt = 0, allCnt = symbols.Count;
@@ -1934,12 +1941,10 @@ namespace SymbolSort
                     {
                         connectedCnt++;
                         s.source_filename = info.source_filename;
-                        //TODO: take any other parameters from PDB?
                     }
                     else
-                        s.name = "";    //to be removed
+                        s.source_filename = "[not_in_pdb]";
                 }
-                symbols.RemoveAll(s => s.name == "");
                 Console.WriteLine("Connected {0}% symbols ({1}/{2})", (uint)(100.0 * connectedCnt / allCnt), connectedCnt, allCnt);
             }
 
