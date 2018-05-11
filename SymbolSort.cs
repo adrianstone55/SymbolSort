@@ -322,6 +322,74 @@ namespace SymbolSort
             return ungrouped_name;
         }
 
+        //extracts the classpath (i.e. namespaces::classes::method) from undecorated symbol name
+        //input symbol must be stripped of return value and parameters (output from undname.exe with some flags)
+        //function may return null if symbol format is unknown
+        private static string[] GetMainClassPath(string short_name) {
+            Func<string, string[]> splitByColons = x => x.Split(new string[] { "::" }, StringSplitOptions.None);
+            string allowedSpecials = @"<=>,\[\]()!~^&|+\-*\/%" + "$";
+            string reClassWord = @"[\w " + allowedSpecials + "]+";
+            string reClassPath = String.Format(@"({0}::)*{0}", reClassWord);
+
+            //(all string constaints)
+            if (short_name == "`string'")
+                return new string[] { short_name };
+
+            // Array<SharedPtr<Curve>, Allocator<SharedPtr<Curve>>>::Buffer::capacity"
+            // std::_Error_objects<int>::_System_object$initializer$
+            Regex regexClassPath = new Regex("^" + reClassPath + "$");
+            if (regexClassPath.IsMatch(short_name))
+                return splitByColons(short_name);
+
+            // std::bad_alloc `RTTI Type Descriptor'
+            const string rttiDescr = " `RTTI Type Descriptor'";
+            if (short_name.EndsWith(rttiDescr)) {
+                string[] res = GetMainClassPath(short_name.Substring(0, short_name.Length - rttiDescr.Length));
+                if (res == null) return null;
+                return res.Concat(new string[] { rttiDescr.Substring(1) }).ToArray();
+            }
+
+            // `CustomHeap::~CustomHeap'::`1'::dtor$0
+            // `std::basic_string<char,std::char_traits<char>,std::allocator<char> >::_Copy'::`1'::catch$0
+            // `CustomHeap<ShapeImpl>::instance'::`2'::some_var
+            // `HeapWrap < ShapeImpl >::Stub::get'::`7'::`local static guard'
+            // `HeapWrap<ShapeImpl>::Stub::get'::`7'::`dynamic atexit destructor for 'g_myHeap''
+            // `Mesh::projectPoints'::`13'::$S1
+            // `GroupElement::getNumElements'::`2'::MyCounter::`vftable'
+            string reLocalEnd = @".*";  //@"(`.+'|[\w]+(\$0)?)";
+            Regex regexFuncLocalVar = new Regex(String.Format(@"^`({0})'::`[\d]+'::{1}$", reClassPath, reLocalEnd));
+            if (regexFuncLocalVar.IsMatch(short_name))
+                return GetMainClassPath(regexFuncLocalVar.Match(short_name).Groups[1].Value);
+
+            // `dynamic initializer for 'BoundingBox::Invalid''
+            // `dynamic initializer for 'std::_Error_objects<int>::_System_object''
+            // std::`dynamic initializer for '_Tuple_alloc''
+            // UniquePtr<Service>::`scalar deleting destructor'
+            if (short_name.EndsWith("'"))
+            {
+                int backtickPos = short_name.IndexOf('`');
+                if (backtickPos >= 0)
+                {
+                    string prefix = short_name.Substring(0, backtickPos);
+                    string quoted = short_name.Substring(backtickPos + 1, short_name.Length - backtickPos - 2);
+                    if (quoted.Count(c => c == '\'') == 2)
+                    {
+                        int left = quoted.IndexOf('\'');
+                        int right = quoted.LastIndexOf('\'');
+                        quoted = quoted.Substring(left + 1, right - left - 1);
+                    }
+                    string[] quotedWords = GetMainClassPath(quoted);
+                    if (quotedWords == null)
+                        return null;
+                    string[] prefixWords = splitByColons(prefix);
+                    return prefixWords.Take(prefixWords.Length-1).Concat(quotedWords).ToArray();
+                }
+            }
+
+            //Console.WriteLine(short_name);
+            return null;
+        }
+
         private static string[] SplitIntoCmdArgs(string text)
         {
             //replace spaces inside quotes
