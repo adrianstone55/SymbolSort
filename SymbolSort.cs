@@ -1744,7 +1744,7 @@ namespace SymbolSort
                 Console.WriteLine("  -complete");
                 Console.WriteLine("      Include a complete listing of all symbols sorted by address.");
                 Console.WriteLine();
-                Console.WriteLine("  -options_from_file");
+                Console.WriteLine("  -options_from_file filename");
                 Console.WriteLine("      Add content of specified file to command line parameters.");
                 Console.WriteLine("      Used to workaround various Windows limits on command line length.");
                 Console.WriteLine();
