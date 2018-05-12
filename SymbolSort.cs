@@ -17,6 +17,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Dia2Lib;
 
 // Most of the interop with msdia90.dll can be generated automatically
@@ -397,6 +398,39 @@ namespace SymbolSort
                 //Console.WriteLine(short_name);
                 return null;
             }
+        }
+
+        private static string[] RunUndName(string[] symbols, uint flags)
+        {
+            //write all symbols to temporary file
+            string inFName = Path.GetTempFileName();
+            var inWriter = new StreamWriter(inFName);
+            foreach (string s in symbols)
+                inWriter.WriteLine(s);
+            inWriter.Close();
+
+            //run undname.exe on the file
+            var arguments = String.Format("0x{0:X} {1}", flags, inFName);
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo("undname", arguments)
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true,
+                }
+            };
+
+            process.Start();
+            string output = process.StandardOutput.ReadToEnd();
+            System.Threading.Thread.Sleep(50);  //just to be sure
+            Debug.Assert(process.HasExited);
+
+            //postprocess output
+            string[] lines = output.Split("\r\n".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+            Debug.Assert(lines.Length == symbols.Length);
+
+            return lines;
         }
 
         private static string[] SplitIntoCmdArgs(string text)
