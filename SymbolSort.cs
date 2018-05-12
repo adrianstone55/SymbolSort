@@ -185,6 +185,7 @@ namespace SymbolSort
         public string raw_name;     //decorated symbol name
         public string source_filename;
         public string section;
+        public string[] classpath;
         public SymbolFlags flags = 0;
     };
 
@@ -2041,6 +2042,28 @@ namespace SymbolSort
                     string path = PerformRegexReplacements(s.source_filename, opts.pathReplacements);
                     return path.Split("/\\".ToCharArray());
                 }, "\\");
+
+            Console.WriteLine("Building class and namespace stats...");
+            writer.WriteLine("Namespaces and classes Contributions");
+            writer.WriteLine("--------------------------------------");
+            string[] easyUndecoratedNames = RunUndName(symbols.Select(s => s.raw_name).ToArray(), 0x29FFF);
+            for (int i = 0; i < symbols.Count; i++)
+            {
+                string n = easyUndecoratedNames[i];
+                n = ExtractGroupedSubstrings(n, '<', '>', "T");
+                string[] parts = MainClassPathGetter.Run(n);
+                symbols[i].classpath = parts;
+            }
+            DumpFolderStats(writer, symbols, opts.maxCount, opts.differenceFiles.Any(),
+                delegate (Symbol s)
+                {
+                    string[] parts = s.classpath;
+                    if (parts == null || parts.Length == 0) {
+                        return new string[] { "[unknown]" };
+                    }
+                    parts = new string[] { "." }.Concat(parts.Take(parts.Length - 1)).ToArray();
+                    return parts;
+                }, "::");
 
             Console.WriteLine("Computing section stats...");
             writer.WriteLine("Merged Sections / Types");
