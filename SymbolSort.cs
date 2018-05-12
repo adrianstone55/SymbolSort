@@ -1456,20 +1456,20 @@ namespace SymbolSort
             writer.WriteLine();
         }
 
-        private static void DumpFolderStats(TextWriter writer, List<Symbol> symbolList, int maxCount, bool showDifferences, List<RegexReplace> pathReplacements)
+        private static void DumpFolderStats(TextWriter writer, List<Symbol> symbolList, int maxCount, bool showDifferences, Func<Symbol, string[]> pathFunc, string separator)
         {
             Dictionary<string, SymbolSourceStats> sourceStats = new Dictionary<string, SymbolSourceStats>();
             int childCount = 0;
             foreach (Symbol s in symbolList)
             {
-                string filename = s.source_filename;
-                filename = PerformRegexReplacements(filename, pathReplacements);
-                for ( ; ; )
+                string[] parts = pathFunc(s);
+                for (int k = parts.Length; k > 0; k--)
                 {
                     SymbolSourceStats stat;
-                    if (sourceStats.ContainsKey(filename))
+                    string currentname = String.Join(separator, parts, 0, k);
+                    if (sourceStats.ContainsKey(currentname))
                     {
-                        stat = sourceStats[filename];
+                        stat = sourceStats[currentname];
                     }
                     else
                     {
@@ -1477,17 +1477,12 @@ namespace SymbolSort
                         stat.count = 0;
                         stat.size = 0;
                         stat.singleChild = false;
-                        sourceStats.Add(filename, stat);
+                        sourceStats.Add(currentname, stat);
                     }
                     stat.count += s.count;
                     stat.size += s.size;
                     stat.singleChild = (stat.count == childCount);
                     childCount = stat.count;
-
-                    int searchPos = filename.LastIndexOf('\\');
-                    if (searchPos < 0)
-                        break;
-                    filename = filename.Remove(searchPos);
                 }
             }
 
@@ -1497,9 +1492,6 @@ namespace SymbolSort
                 {
                     return s1.Value.size - s0.Value.size;
                 } );
-
-            writer.WriteLine("File Contributions");
-            writer.WriteLine("--------------------------------------");
 
             if (showDifferences)
             {
@@ -2041,7 +2033,14 @@ namespace SymbolSort
             }
 
             Console.WriteLine("Building folder stats...");
-            DumpFolderStats(writer, symbols, opts.maxCount, opts.differenceFiles.Any(), opts.pathReplacements);
+            writer.WriteLine("File Contributions");
+            writer.WriteLine("--------------------------------------");
+            DumpFolderStats(writer, symbols, opts.maxCount, opts.differenceFiles.Any(), 
+                delegate(Symbol s)
+                {
+                    string path = PerformRegexReplacements(s.source_filename, opts.pathReplacements);
+                    return path.Split("/\\".ToCharArray());
+                }, "\\");
 
             Console.WriteLine("Computing section stats...");
             writer.WriteLine("Merged Sections / Types");
