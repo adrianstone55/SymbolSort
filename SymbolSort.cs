@@ -2050,9 +2050,12 @@ namespace SymbolSort
             for (int i = 0; i < symbols.Count; i++)
             {
                 string n = easyUndecoratedNames[i];
-                n = ExtractGroupedSubstrings(n, '<', '>', "T");
-                string[] parts = MainClassPathGetter.Run(n);
-                symbols[i].classpath = parts;
+                if (n != null)
+                {
+                    n = ExtractGroupedSubstrings(n, '<', '>', "T");
+                    string[] parts = MainClassPathGetter.Run(n);
+                    symbols[i].classpath = parts;
+                }
             }
             DumpFolderStats(writer, symbols, opts.maxCount, opts.differenceFiles.Any(),
                 delegate (Symbol s)
