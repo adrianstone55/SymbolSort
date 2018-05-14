@@ -429,7 +429,9 @@ namespace SymbolSort
                 Debug.Assert(process.HasExited);
 
                 //postprocess output
-                string[] lines = output.Split("\r\n".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+                string[] lines = output.Split(new string[] { "\r\n" }, StringSplitOptions.None);
+                if (lines.Length > symbols.Length && lines.Skip(symbols.Length).All(x => x == ""))
+                    lines = lines.Take(symbols.Length).ToArray();
                 Debug.Assert(lines.Length == symbols.Length);
 
                 return lines;
