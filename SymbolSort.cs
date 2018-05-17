@@ -1171,9 +1171,10 @@ namespace SymbolSort
         }
 
 
-        private static void ReadSymbolsFromPDB(List<Symbol> symbols, string filename, string searchPath, Options options)
+        private static void ReadSymbolsFromPDB(List<Symbol> symbolsOutput, string filename, string searchPath, Options options)
         {
             DiaSource diaSource = new DiaSource();
+            List<Symbol> symbols = new List<Symbol>();
 
             if (Path.GetExtension(filename).ToLower() == ".pdb")
             {
@@ -1252,6 +1253,9 @@ namespace SymbolSort
                 Console.WriteLine("{0,3}", 100);
                 symbols.RemoveAll(delegate(Symbol s) { return s.size == 0 && ((s.flags & SymbolFlags.Weak) == SymbolFlags.Weak); });
             }
+
+            //add read symbols to the output list
+            symbolsOutput.AddRange(symbols);
         }
 
         private static void WriteSymbolList(TextWriter writer, List<Symbol> symbolList, int maxCount)
