@@ -316,6 +316,34 @@ namespace SymbolSort
             return ungrouped_name;
         }
 
+        private static string[] SplitIntoCmdArgs(string text)
+        {
+            //replace spaces inside quotes
+            char placeholder = Char.ConvertFromUtf32(1).Single();
+            int pos = 0;
+            while (pos < text.Length)
+            {
+                int left = text.IndexOf('"', pos);
+                if (left == -1) break;
+                int right = text.IndexOf('"', left + 1);
+                if (right == -1) break;
+                text = text.Substring(0, left) + text.Substring(left, right - left).Replace(' ', placeholder) + text.Substring(right);
+                pos = right + 1;
+            }
+            //split by spaces
+            string[] addedArgs = text.Split(new char[0], StringSplitOptions.RemoveEmptyEntries);
+            //replace back to spaces
+            for (int i = 0; i < addedArgs.Length; i++)
+            {
+                string s = addedArgs[i];
+                s = s.Replace(placeholder, ' ');
+                if (s.StartsWith("\"") && s.EndsWith("\""))
+                    s = s.Substring(1, s.Length - 2);
+                addedArgs[i] = s;
+            }
+            return addedArgs;
+        }
+
         private static void ParseBsdSymbol(string line, out Symbol symbol)
         {
             symbol = null;
@@ -1639,6 +1667,12 @@ namespace SymbolSort
                     {
                         options |= Options.IncludeUnmappedAddresses;
                     }
+                    else if (curArgStr == "-options_from_file")
+                    {
+                        StreamReader reader = new StreamReader(args[++curArg]);
+                        string contents = reader.ReadToEnd();
+                        args = args.Concat(SplitIntoCmdArgs(contents)).ToArray();
+                    }
                     else
                     {
                         Console.WriteLine("Unrecognized option {0}", args[curArg]);
@@ -1709,6 +1743,10 @@ namespace SymbolSort
                 Console.WriteLine();
                 Console.WriteLine("  -complete");
                 Console.WriteLine("      Include a complete listing of all symbols sorted by address.");
+                Console.WriteLine();
+                Console.WriteLine("  -options_from_file filename");
+                Console.WriteLine("      Add content of specified file to command line parameters.");
+                Console.WriteLine("      Used to workaround various Windows limits on command line length.");
                 Console.WriteLine();
                 Console.WriteLine("Options specific to Exe and PDB inputs:");
                 Console.WriteLine("  -include_public_symbols");
