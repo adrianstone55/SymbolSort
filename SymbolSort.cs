@@ -1563,7 +1563,7 @@ namespace SymbolSort
             public int maxCount;
             public List<string> exclusions;
             public List<RegexReplace> pathReplacements;
-            public UserFlags options;
+            public UserFlags flags;
         }
 
         private static UserOptions ParseArgs(string[] args)
@@ -1576,7 +1576,7 @@ namespace SymbolSort
             opts.differenceFiles = new List<InputFile>();
             opts.searchPath = null;
             opts.pathReplacements = new List<RegexReplace>();
-            opts.options = 0;
+            opts.flags = 0;
 
             if (args.Length < 1)
                 return null;
@@ -1660,23 +1660,23 @@ namespace SymbolSort
                     }
                     else if (curArgStr == "-complete")
                     {
-                        opts.options |= UserFlags.DumpCompleteSymbols;
+                        opts.flags |= UserFlags.DumpCompleteSymbols;
                     }
                     else if (curArgStr == "-include_public_symbols")
                     {
-                        opts.options |= UserFlags.IncludePublicSymbols;
+                        opts.flags |= UserFlags.IncludePublicSymbols;
                     }
                     else if (curArgStr == "-keep_redundant_symbols")
                     {
-                        opts.options |= UserFlags.KeepRedundantSymbols;
+                        opts.flags |= UserFlags.KeepRedundantSymbols;
                     }
                     else if (curArgStr == "-include_sections_as_symbols")
                     {
-                        opts.options |= UserFlags.IncludeSectionsAsSymbols;
+                        opts.flags |= UserFlags.IncludeSectionsAsSymbols;
                     }
                     else if (curArgStr == "-include_unmapped_addresses")
                     {
-                        opts.options |= UserFlags.IncludeUnmappedAddresses;
+                        opts.flags |= UserFlags.IncludeUnmappedAddresses;
                     }
                     else if (curArgStr == "-options_from_file")
                     {
@@ -1815,14 +1815,14 @@ namespace SymbolSort
             List<Symbol> symbols = new List<Symbol>();
             foreach (InputFile inputFile in opts.inputFiles)
             {
-                LoadSymbols(inputFile, symbols, opts.searchPath, opts.options);
+                LoadSymbols(inputFile, symbols, opts.searchPath, opts.flags);
                 Console.WriteLine();
             }
 
             foreach (InputFile inputFile in opts.differenceFiles)
             {
                 List<Symbol> negativeSymbols = new List<Symbol>();
-                LoadSymbols(inputFile, negativeSymbols, opts.searchPath, opts.options);
+                LoadSymbols(inputFile, negativeSymbols, opts.searchPath, opts.flags);
                 Console.WriteLine();
                 foreach (Symbol s in negativeSymbols)
                 {
@@ -1861,7 +1861,7 @@ namespace SymbolSort
                 }
 
                 if (unknownSize > 0 &&
-                    (opts.options & UserFlags.IncludeUnmappedAddresses) != UserFlags.IncludeUnmappedAddresses)
+                    (opts.flags & UserFlags.IncludeUnmappedAddresses) != UserFlags.IncludeUnmappedAddresses)
                 {
                     symbols.RemoveAll(delegate(Symbol s) { return (s.flags & SymbolFlags.Unmapped) == SymbolFlags.Unmapped; });
                 }
@@ -1970,7 +1970,7 @@ namespace SymbolSort
                 opts.maxCount,
                 opts.differenceFiles.Any());
 
-            if ((opts.options & UserFlags.DumpCompleteSymbols) == UserFlags.DumpCompleteSymbols)
+            if ((opts.flags & UserFlags.DumpCompleteSymbols) == UserFlags.DumpCompleteSymbols)
             {
                 Console.WriteLine("Dumping all symbols...");
                 symbols.Sort(
