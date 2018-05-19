@@ -197,7 +197,7 @@ namespace SymbolSort
     };
 
     [Flags]
-    enum Options
+    enum UserFlags
     {
         None = 0x0,
         DumpCompleteSymbols = 0x1,
@@ -1171,7 +1171,7 @@ namespace SymbolSort
         }
 
 
-        private static void ReadSymbolsFromPDB(List<Symbol> symbolsOutput, string filename, string searchPath, Options options)
+        private static void ReadSymbolsFromPDB(List<Symbol> symbolsOutput, string filename, string searchPath, UserFlags options)
         {
             DiaSource diaSource = new DiaSource();
             List<Symbol> symbols = new List<Symbol>();
@@ -1203,7 +1203,7 @@ namespace SymbolSort
             // Symbols are loaded in priority order.  Symbols loaded earlier will be preferred to
             // symbols loaded later when removing overlapping and redundant symbols.
 
-            bool includePublicSymbols = (options & Options.IncludePublicSymbols) == Options.IncludePublicSymbols;
+            bool includePublicSymbols = (options & UserFlags.IncludePublicSymbols) == UserFlags.IncludePublicSymbols;
             if (includePublicSymbols)
             {
                 // Generic public symbols are preferred to global function and data symbols because they will included alignment in
@@ -1233,7 +1233,7 @@ namespace SymbolSort
             ReadSymbolsFromScope(globalScope, SymTagEnum.SymTagData, SymbolFlags.Weak, 0, 100, diaSession, sectionContribs, compilandFileMap, symbols);
             Console.WriteLine();
 
-            bool includeSectionsAsSymbols = (options & Options.IncludeSectionsAsSymbols) == Options.IncludeSectionsAsSymbols;
+            bool includeSectionsAsSymbols = (options & UserFlags.IncludeSectionsAsSymbols) == UserFlags.IncludeSectionsAsSymbols;
             if (includeSectionsAsSymbols)
             {
                 Console.Write("Reading sections as symbols... ");
@@ -1241,7 +1241,7 @@ namespace SymbolSort
                 Console.WriteLine("{0,3}", 100);
             }
 
-            bool keepRedundantSymbols = (options & Options.KeepRedundantSymbols) == Options.KeepRedundantSymbols;
+            bool keepRedundantSymbols = (options & UserFlags.KeepRedundantSymbols) == UserFlags.KeepRedundantSymbols;
             if (keepRedundantSymbols)
             {
                 AddSymbolsForMissingAddresses(symbols);
@@ -1536,7 +1536,7 @@ namespace SymbolSort
             writer.WriteLine();
         }
 
-        private static void LoadSymbols(InputFile inputFile, List<Symbol> symbols, string searchPath, Options options)
+        private static void LoadSymbols(InputFile inputFile, List<Symbol> symbols, string searchPath, UserFlags options)
         {
             Console.WriteLine("Loading symbols from {0}", inputFile.filename);
             switch (inputFile.type)
@@ -1563,7 +1563,7 @@ namespace SymbolSort
             out int maxCount, 
             out List<string> exclusions,
             out List<RegexReplace> pathReplacements,
-            out Options options)
+            out UserFlags options)
         {
             maxCount = 500;
             exclusions = new List<string>();
@@ -1656,23 +1656,23 @@ namespace SymbolSort
                     }
                     else if (curArgStr == "-complete")
                     {
-                        options |= Options.DumpCompleteSymbols;
+                        options |= UserFlags.DumpCompleteSymbols;
                     }
                     else if (curArgStr == "-include_public_symbols")
                     {
-                        options |= Options.IncludePublicSymbols;
+                        options |= UserFlags.IncludePublicSymbols;
                     }
                     else if (curArgStr == "-keep_redundant_symbols")
                     {
-                        options |= Options.KeepRedundantSymbols;
+                        options |= UserFlags.KeepRedundantSymbols;
                     }
                     else if (curArgStr == "-include_sections_as_symbols")
                     {
-                        options |= Options.IncludeSectionsAsSymbols;
+                        options |= UserFlags.IncludeSectionsAsSymbols;
                     }
                     else if (curArgStr == "-include_unmapped_addresses")
                     {
-                        options |= Options.IncludeUnmappedAddresses;
+                        options |= UserFlags.IncludeUnmappedAddresses;
                     }
                     else if (curArgStr == "-options_from_file")
                     {
@@ -1711,7 +1711,7 @@ namespace SymbolSort
             List<RegexReplace> pathReplacements;
             string outFilename;
             string searchPath;
-            Options options;
+            UserFlags options;
             if (!ParseArgs(args, out inputFiles, out outFilename, out differenceFiles, out searchPath, out maxCount, out exclusions, out pathReplacements, out options))
             {
                 Console.WriteLine();
@@ -1864,7 +1864,7 @@ namespace SymbolSort
                 }
 
                 if (unknownSize > 0 &&
-                    (options & Options.IncludeUnmappedAddresses) != Options.IncludeUnmappedAddresses)
+                    (options & UserFlags.IncludeUnmappedAddresses) != UserFlags.IncludeUnmappedAddresses)
                 {
                     symbols.RemoveAll(delegate(Symbol s) { return (s.flags & SymbolFlags.Unmapped) == SymbolFlags.Unmapped; });
                 }
@@ -1973,7 +1973,7 @@ namespace SymbolSort
                 maxCount,
                 differenceFiles.Any());
 
-            if ((options & Options.DumpCompleteSymbols) == Options.DumpCompleteSymbols)
+            if ((options & UserFlags.DumpCompleteSymbols) == UserFlags.DumpCompleteSymbols)
             {
                 Console.WriteLine("Dumping all symbols...");
                 symbols.Sort(
