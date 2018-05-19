@@ -1556,27 +1556,19 @@ namespace SymbolSort
 
         class UserOptions
         {
-            public List<InputFile> inputFiles;
-            public string outFilename;
-            public List<InputFile> differenceFiles;
-            public string searchPath;
-            public int maxCount;
-            public List<string> exclusions;
-            public List<RegexReplace> pathReplacements;
-            public UserFlags flags;
+            public List<InputFile> inputFiles = new List<InputFile>();
+            public string outFilename = null;
+            public List<InputFile> differenceFiles = new List<InputFile>();
+            public string searchPath = null;
+            public int maxCount = 500;
+            public List<string> exclusions = new List<string>();
+            public List<RegexReplace> pathReplacements = new List<RegexReplace>();
+            public UserFlags flags = 0;
         }
 
         private static UserOptions ParseArgs(string[] args)
         {
             UserOptions opts = new UserOptions();
-            opts.maxCount = 500;
-            opts.exclusions = new List<string>();
-            opts.inputFiles = new List<InputFile>();
-            opts.outFilename = null;
-            opts.differenceFiles = new List<InputFile>();
-            opts.searchPath = null;
-            opts.pathReplacements = new List<RegexReplace>();
-            opts.flags = 0;
 
             if (args.Length < 1)
                 return null;
