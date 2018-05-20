@@ -987,14 +987,22 @@ namespace SymbolSort
                 symbol.name = diaSymbol.undecoratedName == null ? symbol.short_name : diaSymbol.undecoratedName;
                 symbol.flags = additionalFlags;
 
-                //extract raw symbol name (see https://stackoverflow.com/a/19637731/556899)
-                string rawName;
-                IDiaSymbolUndecoratedNameExFlags flags = IDiaSymbolUndecoratedNameExFlags.UNDNAME_32_BIT_DECODE | IDiaSymbolUndecoratedNameExFlags.UNDNAME_TYPE_ONLY;
-                diaSymbol.get_undecoratedNameEx((uint)flags, out rawName);
-                if (rawName != null) {
-                    //ignore trashy names like " ?? :: ?? ::Z::_NPEBDI_N * __ptr64 volatile "
-                    if (!rawName.Contains(' '))
-                        symbol.raw_name = rawName;
+                if (type == SymTagEnum.SymTagPublicSymbol)
+                {
+                    symbol.raw_name = symbol.short_name;
+                }
+                else
+                {
+                    //there is no reason this can work, but it often works...
+                    string rawName;
+                    IDiaSymbolUndecoratedNameExFlags flags = IDiaSymbolUndecoratedNameExFlags.UNDNAME_32_BIT_DECODE | IDiaSymbolUndecoratedNameExFlags.UNDNAME_TYPE_ONLY;
+                    diaSymbol.get_undecoratedNameEx((uint)flags, out rawName);
+                    if (rawName != null)
+                    {
+                        //ignore trashy names like " ?? :: ?? ::Z::_NPEBDI_N * __ptr64 volatile "
+                        if (!rawName.Contains(' '))
+                            symbol.raw_name = rawName;
+                    }
                 }
 
                 switch (type)
@@ -1920,8 +1928,9 @@ namespace SymbolSort
             if (infoPdb.Count() > 0)
             {
                 var infoSymbols = new List<Symbol>();
+                UserFlags adjustedFlags = opts.flags | UserFlags.KeepRedundantSymbols | UserFlags.IncludePublicSymbols;
                 foreach (InputFile f in infoPdb)
-                    LoadSymbols(f, infoSymbols, opts.searchPath, opts.flags | Options.KeepRedundantSymbols);
+                    LoadSymbols(f, infoSymbols, opts.searchPath, adjustedFlags);
                 var infoDict = new Dictionary<string, Symbol>();
                 foreach (Symbol s in infoSymbols)
                     if (s.raw_name != null)
