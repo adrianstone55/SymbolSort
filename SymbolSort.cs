@@ -1567,6 +1567,7 @@ namespace SymbolSort
             public string searchPath = null;
             public int maxCount = 500;
             public List<string> exclusions = new List<string>();
+            public List<string> includedSections = null;
             public List<RegexReplace> pathReplacements = new List<RegexReplace>();
             public UserFlags flags = 0;
         }
@@ -1599,6 +1600,11 @@ namespace SymbolSort
                     else if (curArgStr == "-exclude")
                     {
                         opts.exclusions.Add(args[++curArg]);
+                    }
+                    else if (curArgStr == "-sections")
+                    {
+                        string value = args[++curArg];
+                        opts.includedSections = value.Split(",".ToCharArray()).ToList();
                     }
                     else if (curArgStr == "-in")
                     {
@@ -1728,6 +1734,10 @@ namespace SymbolSort
                 Console.WriteLine("  -exclude substring");
                 Console.WriteLine("      Exclude symbols that contain the specified substring");
                 Console.WriteLine();
+                Console.WriteLine("  -sections sections_list");
+                Console.WriteLine("      Take into account only symbols from specified sections.");
+                Console.WriteLine("      sections_list is comma-separated list of section names (without leading dot).");
+                Console.WriteLine();
                 Console.WriteLine("  -diff:[type] filename");
                 Console.WriteLine("      Use this file as a basis for generating a differences report.");
                 Console.WriteLine("      See -in option for valid types.");
@@ -1841,6 +1851,17 @@ namespace SymbolSort
                                 return true;
                         }
                         return false;
+                    });
+            }
+
+            if (opts.includedSections != null)
+            {
+                Console.WriteLine("Filtering Sections...");
+                symbols.RemoveAll(
+                    delegate(Symbol s)
+                    {
+                        string name = s.section.TrimStart(".".ToCharArray());
+                        return !opts.includedSections.Contains(s.section);
                     });
             }
 
