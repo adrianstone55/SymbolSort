@@ -1843,6 +1843,13 @@ namespace SymbolSort
                 Console.WriteLine("      aren't directly attributable to symbols.  In the complete view");
                 Console.WriteLine("      this will also highlight space lost due to alignment padding.");
                 Console.WriteLine();
+                Console.WriteLine("Options specific to Comdat input with PDB information:");
+                Console.WriteLine("  -info filename");
+                Console.WriteLine("      Specify PDB file which will be used only to fetch source file information.");
+                Console.WriteLine("      Source filename of each input symbol will be deduced from this PDB.");
+                Console.WriteLine("      You can specify many such arguments for multi-project analysis.");
+
+                Console.WriteLine();
                 return;
             }
 
