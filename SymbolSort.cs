@@ -1782,6 +1782,7 @@ namespace SymbolSort
                 Console.WriteLine("          comdat - the format produced by DumpBin /headers");
                 Console.WriteLine("          sysv   - the format produced by nm --format=sysv");
                 Console.WriteLine("          bsd    - the format produced by nm --format=bsd --print-size");
+                Console.WriteLine("      It is allowed to specify many input files for total analysis.");
                 Console.WriteLine();
                 Console.WriteLine("  -out filename");
                 Console.WriteLine("      Write output to specified file instead of stdout");
