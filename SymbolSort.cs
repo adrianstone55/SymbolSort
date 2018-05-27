@@ -96,6 +96,33 @@ namespace Dia2Lib
         LocTypeMax
     }
 
+    // See https://msdn.microsoft.com/en-us/library/kszfk0fs.aspx
+    // for documentation of IDiaSymbol::get_undecoratedNameEx flags
+    [Flags]
+    enum IDiaSymbolUndecoratedNameExFlags : uint
+    {
+        UNDNAME_COMPLETE                    = 0x0000,
+        UNDNAME_NO_LEADING_UNDERSCORES      = 0x0001,
+        UNDNAME_NO_MS_KEYWORDS              = 0x0002,
+        UNDNAME_NO_FUNCTION_RETURNS         = 0x0004,
+        UNDNAME_NO_ALLOCATION_MODEL         = 0x0008,
+        UNDNAME_NO_ALLOCATION_LANGUAGE      = 0x0010,
+        UNDNAME_RESERVED1                   = 0x0020,
+        UNDNAME_RESERVED2                   = 0x0040,
+        UNDNAME_NO_THISTYPE                 = 0x0060,
+        UNDNAME_NO_ACCESS_SPECIFIERS        = 0x0080,
+        UNDNAME_NO_THROW_SIGNATURES         = 0x0100,
+        UNDNAME_NO_MEMBER_TYPE              = 0x0200,
+        UNDNAME_NO_RETURN_UDT_MODEL         = 0x0400,
+        UNDNAME_32_BIT_DECODE               = 0x0800,
+        UNDNAME_NAME_ONLY                   = 0x1000,
+        UNDNAME_TYPE_ONLY                   = 0x2000,
+        UNDNAME_HAVE_PARAMETERS             = 0x4000,
+        UNDNAME_NO_ECSU                     = 0x8000,
+        UNDNAME_NO_IDENT_CHAR_CHECK         = 0x10000,
+        UNDNAME_NO_PTR64                    = 0x20000,
+    }
+
     // See http://msdn.microsoft.com/en-us/library/windows/desktop/ms680341(v=vs.85).aspx for
     // more flag options and descriptions
     [Flags]
@@ -170,8 +197,9 @@ namespace SymbolSort
         PublicSymbol    = 0x008,
         Section         = 0x010,
         Unmapped        = 0x020,
-        Weak            = 0x040
-     };
+        Weak            = 0x040,
+        SourceApprox    = 0x080,    //source filename of this function is not precise
+    };
 
     class Symbol
     {
@@ -181,6 +209,7 @@ namespace SymbolSort
         public int rva_end;
         public string name;
         public string short_name;
+        public string raw_name;     //decorated symbol name
         public string source_filename;
         public string section;
         public SymbolFlags flags = 0;
@@ -216,10 +245,12 @@ namespace SymbolSort
     {
         public string       filename;
         public InputType    type;
+        public bool         info;  //parse file but exclude it from stats
         public InputFile(string filename, InputType type)
         {
             this.filename = filename;
             this.type = type;
+            this.info = false;
         }
     }
 
@@ -560,7 +591,7 @@ namespace SymbolSort
 
         private static Regex ReadSymbolsFromCOMDAT_regexName = new Regex(@"\n[ \t]*([^ \t]+)[ \t]+name", RegexOptions.Compiled);
         private static Regex ReadSymbolsFromCOMDAT_regexSize = new Regex(@"\n[ \t]*([A-Za-z0-9]+)[ \t]+size of raw data", RegexOptions.Compiled);
-        private static Regex ReadSymbolsFromCOMDAT_regexCOMDAT = new Regex(@"\n[ \t]*COMDAT; sym= \""([^\n\""]+)", RegexOptions.Compiled);
+        private static Regex ReadSymbolsFromCOMDAT_regexCOMDAT = new Regex(@"\n[ \t]*COMDAT; sym= \""([^\n\""]+)\"" \(([^\n()]+)\)", RegexOptions.Compiled);
         private static void ReadSymbolsFromCOMDAT(List<Symbol> symbols, string inFilename)
         {
             Regex regexName = ReadSymbolsFromCOMDAT_regexName;
@@ -612,6 +643,7 @@ namespace SymbolSort
 
                         m = regexCOMDAT.Match(record);
                         symbol.name = m.Groups[1].Value;
+                        symbol.raw_name = m.Groups[2].Value;
                         if (symbol.name != "")
                         {
                             symbol.rva_start = 0;
@@ -954,6 +986,25 @@ namespace SymbolSort
                 symbol.short_name = diaSymbol.name == null ? "" : diaSymbol.name;
                 symbol.name = diaSymbol.undecoratedName == null ? symbol.short_name : diaSymbol.undecoratedName;
                 symbol.flags = additionalFlags;
+
+                if (type == SymTagEnum.SymTagPublicSymbol)
+                {
+                    symbol.raw_name = symbol.short_name;
+                }
+                else
+                {
+                    //there is no reason this can work, but it often works...
+                    string rawName;
+                    IDiaSymbolUndecoratedNameExFlags flags = IDiaSymbolUndecoratedNameExFlags.UNDNAME_32_BIT_DECODE | IDiaSymbolUndecoratedNameExFlags.UNDNAME_TYPE_ONLY;
+                    diaSymbol.get_undecoratedNameEx((uint)flags, out rawName);
+                    if (rawName != null)
+                    {
+                        //ignore trashy names like " ?? :: ?? ::Z::_NPEBDI_N * __ptr64 volatile "
+                        if (!rawName.Contains(' '))
+                            symbol.raw_name = rawName;
+                    }
+                }
+
                 switch (type)
                 {
                     case SymTagEnum.SymTagData:
@@ -990,6 +1041,7 @@ namespace SymbolSort
                             {
                                 IDiaSectionContrib sectionContrib = FindSectionContribForRVA(symbol.rva_start, sectionContribs);
                                 symbol.source_filename = sectionContrib == null ? "" : compilandFileMap[sectionContrib.compilandId];
+                                symbol.flags |= SymbolFlags.SourceApprox;
                             }
                             symbol.section = "code";
                             symbol.flags |= SymbolFlags.Function;
@@ -1622,6 +1674,12 @@ namespace SymbolSort
                     {
                         opts.inputFiles.Add(new InputFile(args[++curArg], InputType.nm_bsd));
                     }
+                    else if (curArgStr == "-info")
+                    {
+                        var infile = new InputFile(args[++curArg], InputType.pdb);
+                        infile.info = true;
+                        opts.inputFiles.Add(infile);
+                    }
                     else if (curArgStr == "-out")
                     {
                         opts.outFilename = args[++curArg];
@@ -1724,6 +1782,7 @@ namespace SymbolSort
                 Console.WriteLine("          comdat - the format produced by DumpBin /headers");
                 Console.WriteLine("          sysv   - the format produced by nm --format=sysv");
                 Console.WriteLine("          bsd    - the format produced by nm --format=bsd --print-size");
+                Console.WriteLine("      It is allowed to specify many input files for total analysis.");
                 Console.WriteLine();
                 Console.WriteLine("  -out filename");
                 Console.WriteLine("      Write output to specified file instead of stdout");
@@ -1785,6 +1844,13 @@ namespace SymbolSort
                 Console.WriteLine("      aren't directly attributable to symbols.  In the complete view");
                 Console.WriteLine("      this will also highlight space lost due to alignment padding.");
                 Console.WriteLine();
+                Console.WriteLine("Options specific to Comdat input with PDB information:");
+                Console.WriteLine("  -info filename");
+                Console.WriteLine("      Specify PDB file which will be used only to fetch source file information.");
+                Console.WriteLine("      Source filename of each input symbol will be deduced from this PDB.");
+                Console.WriteLine("      You can specify many such arguments for multi-project analysis.");
+
+                Console.WriteLine();
                 return;
             }
 
@@ -1822,6 +1888,7 @@ namespace SymbolSort
             List<Symbol> symbols = new List<Symbol>();
             foreach (InputFile inputFile in opts.inputFiles)
             {
+                if (inputFile.info) continue;
                 LoadSymbols(inputFile, symbols, opts.searchPath, opts.flags);
                 Console.WriteLine();
             }
@@ -1863,6 +1930,39 @@ namespace SymbolSort
                         string name = s.section.TrimStart(".".ToCharArray());
                         return !opts.includedSections.Contains(s.section);
                     });
+            }
+
+            List<InputFile> infoPdb = opts.inputFiles.FindAll(f => f.info && f.type == InputType.pdb);
+            if (infoPdb.Count() > 0)
+            {
+                var infoSymbols = new List<Symbol>();
+                UserFlags adjustedFlags = opts.flags | UserFlags.KeepRedundantSymbols | UserFlags.IncludePublicSymbols;
+                foreach (InputFile f in infoPdb)
+                    LoadSymbols(f, infoSymbols, opts.searchPath, adjustedFlags);
+                var infoDict = new Dictionary<string, Symbol>();
+                foreach (Symbol s in infoSymbols)
+                    if (s.raw_name != null)
+                        if (!infoDict.ContainsKey(s.raw_name))
+                        {
+                            infoDict.Add(s.raw_name, s);
+                            if ((s.flags & SymbolFlags.SourceApprox) != 0)
+                                s.source_filename = "[unclear_source]";
+                        }
+
+                Console.WriteLine("Connecting symbols to PDB info...");
+                int connectedCnt = 0, allCnt = symbols.Count;
+                foreach (Symbol s in symbols)
+                {
+                    Symbol info;
+                    if (infoDict.TryGetValue(s.raw_name, out info))
+                    {
+                        connectedCnt++;
+                        s.source_filename = info.source_filename;
+                    }
+                    else
+                        s.source_filename = "[not_in_pdb]";
+                }
+                Console.WriteLine("Connected {0}% symbols ({1}/{2})", (uint)(100.0 * connectedCnt / allCnt), connectedCnt, allCnt);
             }
 
             Console.WriteLine("Processing raw symbols...");
