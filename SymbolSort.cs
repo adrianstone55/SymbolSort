@@ -17,6 +17,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Dia2Lib;
 
 // Most of the interop with msdia90.dll can be generated automatically
@@ -181,8 +182,10 @@ namespace SymbolSort
         public int rva_end;
         public string name;
         public string short_name;
+        public string raw_name;     //decorated symbol name
         public string source_filename;
         public string section;
+        public string[] classpath;
         public SymbolFlags flags = 0;
     };
 
@@ -319,6 +322,125 @@ namespace SymbolSort
             }
 
             return ungrouped_name;
+        }
+
+        private class MainClassPathGetter
+        {
+            private static string[] splitByColons(string x)
+            {
+                return x.Split(new string[] { "::" }, StringSplitOptions.None);
+            }
+
+            private static string allowedSpecials = @"<=>,\[\]()!~^&|+\-*\/%" + "$";
+            private static string reClassWord = @"[\w " + allowedSpecials + "]+";
+            private static string reClassPath = String.Format(@"({0}::)*{0}", reClassWord);
+            private static Regex regexClassPath = new Regex("^" + reClassPath + "$", RegexOptions.Compiled);
+            private static string reLocalEnd = @".*";  //@"(`.+'|[\w]+(\$0)?)";
+            private static Regex regexFuncLocalVar = new Regex(String.Format(@"^`({0})'::`[\d]+'::{1}$", reClassPath, reLocalEnd));
+
+            //extracts the classpath (i.e. namespaces::classes::method) from undecorated symbol name
+            //input symbol must be stripped of return value and parameters (output from undname.exe with some flags)
+            //function may return null if symbol format is unknown
+            public static string[] Run(string short_name)
+            {
+                //(all string constaints)
+                if (short_name == "`string'")
+                    return new string[] { short_name };
+
+                // Array<SharedPtr<Curve>, Allocator<SharedPtr<Curve>>>::Buffer::capacity"
+                // std::_Error_objects<int>::_System_object$initializer$
+                if (regexClassPath.IsMatch(short_name))
+                    return splitByColons(short_name);
+
+                // std::bad_alloc `RTTI Type Descriptor'
+                const string rttiDescr = " `RTTI Type Descriptor'";
+                if (short_name.EndsWith(rttiDescr))
+                {
+                    string[] res = Run(short_name.Substring(0, short_name.Length - rttiDescr.Length));
+                    if (res == null) return null;
+                    return res.Concat(new string[] { rttiDescr.Substring(1) }).ToArray();
+                }
+
+                // `CustomHeap::~CustomHeap'::`1'::dtor$0
+                // `std::basic_string<char,std::char_traits<char>,std::allocator<char> >::_Copy'::`1'::catch$0
+                // `CustomHeap<ShapeImpl>::instance'::`2'::some_var
+                // `HeapWrap < ShapeImpl >::Stub::get'::`7'::`local static guard'
+                // `HeapWrap<ShapeImpl>::Stub::get'::`7'::`dynamic atexit destructor for 'g_myHeap''
+                // `Mesh::projectPoints'::`13'::$S1
+                // `GroupElement::getNumElements'::`2'::MyCounter::`vftable'
+                if (regexFuncLocalVar.IsMatch(short_name))
+                    return Run(regexFuncLocalVar.Match(short_name).Groups[1].Value);
+
+                // `dynamic initializer for 'BoundingBox::Invalid''
+                // `dynamic initializer for 'std::_Error_objects<int>::_System_object''
+                // std::`dynamic initializer for '_Tuple_alloc''
+                // UniquePtr<Service>::`scalar deleting destructor'
+                if (short_name.EndsWith("'"))
+                {
+                    int backtickPos = short_name.IndexOf('`');
+                    if (backtickPos >= 0)
+                    {
+                        string prefix = short_name.Substring(0, backtickPos);
+                        string quoted = short_name.Substring(backtickPos + 1, short_name.Length - backtickPos - 2);
+                        if (quoted.Count(c => c == '\'') == 2)
+                        {
+                            int left = quoted.IndexOf('\'');
+                            int right = quoted.LastIndexOf('\'');
+                            quoted = quoted.Substring(left + 1, right - left - 1);
+                        }
+                        string[] quotedWords = Run(quoted);
+                        if (quotedWords == null)
+                            return null;
+                        string[] prefixWords = splitByColons(prefix);
+                        return prefixWords.Take(prefixWords.Length - 1).Concat(quotedWords).ToArray();
+                    }
+                }
+
+                //Console.WriteLine(short_name);
+                return null;
+            }
+        }
+
+        private static string[] RunUndName(string[] symbols, uint flags)
+        {
+            //write all symbols to temporary file
+            string inFName = Path.GetTempFileName();
+            var inWriter = new StreamWriter(inFName);
+            foreach (string s in symbols)
+                inWriter.WriteLine(s);
+            inWriter.Close();
+
+            //run undname.exe on the file
+            var arguments = String.Format("0x{0:X} {1}", flags, inFName);
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo("undname", arguments)
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true,
+                }
+            };
+
+            try
+            {
+                process.Start();
+                string output = process.StandardOutput.ReadToEnd();
+                System.Threading.Thread.Sleep(50);  //just to be sure
+                Debug.Assert(process.HasExited);
+
+                //postprocess output
+                string[] lines = output.Split(new string[] { "\r\n" }, StringSplitOptions.None);
+                if (lines.Length > symbols.Length && lines.Skip(symbols.Length).All(x => x == ""))
+                    lines = lines.Take(symbols.Length).ToArray();
+                Debug.Assert(lines.Length == symbols.Length);
+
+                return lines;
+            }
+            catch
+            {
+                return new string[symbols.Length];
+            }
         }
 
         private static string[] SplitIntoCmdArgs(string text)
@@ -560,7 +682,7 @@ namespace SymbolSort
 
         private static Regex ReadSymbolsFromCOMDAT_regexName = new Regex(@"\n[ \t]*([^ \t]+)[ \t]+name", RegexOptions.Compiled);
         private static Regex ReadSymbolsFromCOMDAT_regexSize = new Regex(@"\n[ \t]*([A-Za-z0-9]+)[ \t]+size of raw data", RegexOptions.Compiled);
-        private static Regex ReadSymbolsFromCOMDAT_regexCOMDAT = new Regex(@"\n[ \t]*COMDAT; sym= \""([^\n\""]+)", RegexOptions.Compiled);
+        private static Regex ReadSymbolsFromCOMDAT_regexCOMDAT = new Regex(@"\n[ \t]*COMDAT; sym= \""([^\n\""]+)\"" \(([^\n()]+)\)", RegexOptions.Compiled);
         private static void ReadSymbolsFromCOMDAT(List<Symbol> symbols, string inFilename)
         {
             Regex regexName = ReadSymbolsFromCOMDAT_regexName;
@@ -612,6 +734,7 @@ namespace SymbolSort
 
                         m = regexCOMDAT.Match(record);
                         symbol.name = m.Groups[1].Value;
+                        symbol.raw_name = m.Groups[2].Value;
                         if (symbol.name != "")
                         {
                             symbol.rva_start = 0;
@@ -1334,20 +1457,20 @@ namespace SymbolSort
             writer.WriteLine();
         }
 
-        private static void DumpFolderStats(TextWriter writer, List<Symbol> symbolList, int maxCount, bool showDifferences, List<RegexReplace> pathReplacements)
+        private static void DumpFolderStats(TextWriter writer, List<Symbol> symbolList, int maxCount, bool showDifferences, Func<Symbol, string[]> pathFunc, string separator)
         {
             Dictionary<string, SymbolSourceStats> sourceStats = new Dictionary<string, SymbolSourceStats>();
             int childCount = 0;
             foreach (Symbol s in symbolList)
             {
-                string filename = s.source_filename;
-                filename = PerformRegexReplacements(filename, pathReplacements);
-                for ( ; ; )
+                string[] parts = pathFunc(s);
+                for (int k = parts.Length; k > 0; k--)
                 {
                     SymbolSourceStats stat;
-                    if (sourceStats.ContainsKey(filename))
+                    string currentname = String.Join(separator, parts, 0, k);
+                    if (sourceStats.ContainsKey(currentname))
                     {
-                        stat = sourceStats[filename];
+                        stat = sourceStats[currentname];
                     }
                     else
                     {
@@ -1355,17 +1478,12 @@ namespace SymbolSort
                         stat.count = 0;
                         stat.size = 0;
                         stat.singleChild = false;
-                        sourceStats.Add(filename, stat);
+                        sourceStats.Add(currentname, stat);
                     }
                     stat.count += s.count;
                     stat.size += s.size;
                     stat.singleChild = (stat.count == childCount);
                     childCount = stat.count;
-
-                    int searchPos = filename.LastIndexOf('\\');
-                    if (searchPos < 0)
-                        break;
-                    filename = filename.Remove(searchPos);
                 }
             }
 
@@ -1375,9 +1493,6 @@ namespace SymbolSort
                 {
                     return s1.Value.size - s0.Value.size;
                 } );
-
-            writer.WriteLine("File Contributions");
-            writer.WriteLine("--------------------------------------");
 
             if (showDifferences)
             {
@@ -1919,7 +2034,39 @@ namespace SymbolSort
             }
 
             Console.WriteLine("Building folder stats...");
-            DumpFolderStats(writer, symbols, opts.maxCount, opts.differenceFiles.Any(), opts.pathReplacements);
+            writer.WriteLine("File Contributions");
+            writer.WriteLine("--------------------------------------");
+            DumpFolderStats(writer, symbols, opts.maxCount, opts.differenceFiles.Any(), 
+                delegate(Symbol s)
+                {
+                    string path = PerformRegexReplacements(s.source_filename, opts.pathReplacements);
+                    return path.Split("/\\".ToCharArray());
+                }, "\\");
+
+            Console.WriteLine("Building class and namespace stats...");
+            writer.WriteLine("Namespaces and classes Contributions");
+            writer.WriteLine("--------------------------------------");
+            string[] easyUndecoratedNames = RunUndName(symbols.Select(s => s.raw_name).ToArray(), 0x29FFF);
+            for (int i = 0; i < symbols.Count; i++)
+            {
+                string n = easyUndecoratedNames[i];
+                if (n != null)
+                {
+                    n = ExtractGroupedSubstrings(n, '<', '>', "T");
+                    string[] parts = MainClassPathGetter.Run(n);
+                    symbols[i].classpath = parts;
+                }
+            }
+            DumpFolderStats(writer, symbols, opts.maxCount, opts.differenceFiles.Any(),
+                delegate (Symbol s)
+                {
+                    string[] parts = s.classpath;
+                    if (parts == null || parts.Length == 0) {
+                        return new string[] { "[unknown]" };
+                    }
+                    parts = new string[] { "." }.Concat(parts.Take(parts.Length - 1)).ToArray();
+                    return parts;
+                }, "::");
 
             Console.WriteLine("Computing section stats...");
             writer.WriteLine("Merged Sections / Types");
